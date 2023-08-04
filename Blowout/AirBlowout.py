@@ -107,14 +107,21 @@ class Solver:
             
         print("Time: ",t,"mass: ", m[count], "mdot: ", mdot[count], "Pressure: ",P[count])
         return mdot, P, time
+        
+    def OFratio(self, mdot_a,mdot_f):
+        OF = []
+        for count in range(len(mdot_f)):
+            OFtemp = mdot_a[count]/mdot_f[count]
+            OF.append(OFtemp)
+
+        return OF
             
 
 """Fuel tank Calcs"""
 Pt = 11*10**5           #Pa, initial pressure in both tanks
-V_f = 0.00806903        #m^3, volume of air tank
 Ae_f = 9.77809*10**-8   #m^2, Exit Area
-VR = 0.2                #Volume ratio of fuel to air in fuel tank
-m_f = 0.015             #kg, inital fuel mass
+VR = 2.000              #Volume ratio of fuel to air in fuel tank
+m_f = 0.01100           #kg, inital fuel mass
 
 dt = 0.001
 
@@ -129,6 +136,8 @@ Ae_a = 5.04112*10**-6  #m^2, Exit Area
 tf = t[-1]
 
 mdot_a, P_a, t_a = SolverInstance.airTank(dt, V_a, Ae_a, tf)
+
+OF = SolverInstance.OFratio(mdot_a,mdot_f)
 
 plt.figure(1)
 plt.clf()
@@ -152,6 +161,15 @@ plt.xlabel("Time [s]")
 plt.ylabel("Tank Pressure [Pa]")
 plt.savefig('Pressure_vs_time.png', dpi=300)
 plt.legend()
+
+plt.figure(3)
+plt.clf()
+plt.plot(t, OF)
+
+plt.grid(1)
+plt.xlabel("Time [s]")
+plt.ylabel("OF ratio")
+plt.savefig('OF_vs_time.png', dpi=300)
 
 
 plt.ion()
