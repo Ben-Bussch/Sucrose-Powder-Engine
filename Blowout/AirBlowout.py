@@ -12,41 +12,33 @@ class Solver:
     P0 = 1.01325*10**5   #Atmospheric Pressure
     R = 287.17          #Specific Gas constant of air
     
-    def __init__(self, Ptank, Vtank, Aexit):
+    def __init__(self, Ptank):
         self.Ptank = Ptank
-        self.Vtank = Vtank
-        self.Aexit = Aexit
     
-    def terminate(self, P):
-        run = True
-        Perror = (P-self.P0)/self.P0 
-        if Perror <= 0.001:
-            run = False
-        return run
     
-    def airTank(self, dt):
+    def airTank(self, dt, Vtank, Aexit, tf):
         """Numerically solves air tank blowout, using tank parameters and timestp dt"""
         #initial Parameters
         Pstart = self.Ptank
-        m0 = (self.Ptank*self.Vtank)/(self.R*self.T0)
+        m0 = (self.Ptank*Vtank)/(self.R*self.T0)
         #print("m_start:", m0, "Ptank: ", self.Ptank)
         t = 0
         
         #Arrays
         P = [Pstart]
         m = [m0]
-        rho = [m0/self.Vtank]
+        rho = [m0/Vtank]
         time = [t]
-        mdot = [-(m0*self.Aexit/self.Vtank)*np.sqrt(2*self.R*self.T0 - self.P0*self.Vtank)]
+        mdot = [-(m0*Aexit/Vtank)*np.sqrt(2*self.R*self.T0 - self.P0*Vtank)]
         print("mdot start: ", mdot[0])
         
-        run = True
+        
         count = 0
         
-        while run:
+        while t < tf:
             
             #mass flowrate
-            mdot1 = -(m[count]*self.Aexit/self.Vtank)*np.sqrt(2*self.R*self.T0 - self.P0*self.Vtank)
+            mdot1 = -(m[count]*Aexit/Vtank)*np.sqrt(2*self.R*self.T0 - self.P0*Vtank)
             mdot.append(mdot1)
             
             #mass
@@ -54,20 +46,19 @@ class Solver:
             m.append(m1)
             
             #Pressure
-            P1 = m[count]*self.R*self.T0/self.Vtank
+            P1 = m[count]*self.R*self.T0/Vtank
             P.append(P1)
             
             t += dt
             time.append(t)
             
-            run = self.terminate(P[count])
             count += 1
 
         
         print("Time: ",t,"mass: ", m[count], "mdot: ", mdot[count], "Pressure: ",P[count])
         return mdot, P, time
     
-    def fuelTank(self, dt, VR, m0):
+    def fuelTank(self, dt, Aexit, VR, m0):
         """Numerically solves fuel tank blowout, using tank parameters and timestp dt"""
         
         #initial Parameters
@@ -82,7 +73,7 @@ class Solver:
         V = [V0]
         m = [m0]
         time = [t]
-        mdot = [-(rho_f*self.Aexit*np.sqrt(2*(Pstart-self.P0)/rho_f))]
+        mdot = [-(rho_f*Aexit*np.sqrt(2*(Pstart-self.P0)/rho_f))]
         Vdot = [mdot[0]*rho_f]
         print("mdot start: ", mdot[0])
         
@@ -102,7 +93,7 @@ class Solver:
             P.append(P1)
                         
             #Mass Flowrate
-            mdot1 = -(rho_f*self.Aexit*np.sqrt(2*(P[count+1]-self.P0)/rho_f))
+            mdot1 = -(rho_f*Aexit*np.sqrt(2*(P[count+1]-self.P0)/rho_f))
             mdot.append(mdot1)
             
             #Mass of Fuel in tank
@@ -117,71 +108,52 @@ class Solver:
         print("Time: ",t,"mass: ", m[count], "mdot: ", mdot[count], "Pressure: ",P[count])
         return mdot, P, time
             
-            
-        
-    
+
+"""Fuel tank Calcs"""
+Pt = 11*10**5           #Pa, initial pressure in both tanks
+V_f = 0.00806903        #m^3, volume of air tank
+Ae_f = 9.77809*10**-8   #m^2, Exit Area
+VR = 0.2                #Volume ratio of fuel to air in fuel tank
+m_f = 0.015             #kg, inital fuel mass
+
+dt = 0.001
+
+SolverInstance = Solver(Pt)
+
+mdot_f, P_f, t = SolverInstance.fuelTank(dt, Ae_f, VR, m_f)
+
 """Air tank calcs"""
-Pt_a = 11*10**5        #Pa, initial pressure in air tank
 V_a = 0.00806903       #m^3, volume of air tank
 Ae_a = 5.04112*10**-6  #m^2, Exit Area
 
-airInstance = Solver(Pt_a,V_a,Ae_a)
+tf = t[-1]
 
-mdot_a, P_a, t_a = airInstance.airTank(0.001)
-
+mdot_a, P_a, t_a = SolverInstance.airTank(dt, V_a, Ae_a, tf)
 
 plt.figure(1)
 plt.clf()
-plt.plot(t_a, mdot_a)
+plt.plot(t, mdot_f, label='Fuel Tank')
+plt.plot(t, mdot_a, label='Air Tank')
 
 plt.grid(1)
 plt.xlabel("Time [s]")
 plt.ylabel("Mass Flow Rate [kg/s]")
 plt.savefig('Mdot_vs_time.png', dpi=300)
-
+plt.legend()
 
 
 plt.figure(2)
 plt.clf()
-plt.plot(t_a, P_a)
+plt.plot(t, P_f, label='Fuel Tank')
+plt.plot(t, P_a, label='Air Tank')
 
 plt.grid(1)
 plt.xlabel("Time [s]")
 plt.ylabel("Tank Pressure [Pa]")
 plt.savefig('Pressure_vs_time.png', dpi=300)
-plt.ion()
+plt.legend()
 
 
-"""Fuel tank Calcs"""
-Pt_f = 11*10**5         #Pa, initial pressure in air tank
-V_f = 0.00806903        #m^3, volume of air tank
-Ae_f = 9.77809*10**-8   #m^2, Exit Area
-VR = 0.5                #Volume ratio of fuel to air in fuel tank
-m_f = 0.015             #kg, inital fuel mass
-
-fuelInstance = Solver(Pt_f,V_f,Ae_f)
-
-mdot_f, P_f, t_f = fuelInstance.fuelTank(0.001, VR, m_f)
-
-plt.figure(3)
-plt.clf()
-plt.plot(t_f, mdot_f)
-
-plt.grid(1)
-plt.xlabel("Time [s]")
-plt.ylabel("Mass Flow Rate [kg/s]")
-plt.savefig('Mdot_vs_time.png', dpi=300)
-
-
-
-plt.figure(4)
-plt.clf()
-plt.plot(t_f, P_f)
-
-plt.grid(1)
-plt.xlabel("Time [s]")
-plt.ylabel("Tank Pressure [Pa]")
-plt.savefig('Pressure_vs_time.png', dpi=300)
 plt.ion()
 
 
