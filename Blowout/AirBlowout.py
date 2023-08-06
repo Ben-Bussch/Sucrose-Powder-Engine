@@ -109,18 +109,30 @@ class Solver:
         return mdot, P, time
         
     def OFratio(self, mdot_a,mdot_f):
+        """Calculates OF ratio from air and fuel tank blowout"""
         OF = []
         for count in range(len(mdot_f)):
             OFtemp = mdot_a[count]/mdot_f[count]
             OF.append(OFtemp)
 
         return OF
+    
+    def OFstats(self, OF, opt):
+        """Calculates variance from optimal OF ratio and average OF ratio from tank blowout"""
+        varianceSum,avgSum = 0,0
+        for count in range(len(OF)):
+           varianceSum += (OF[count]-opt)**2
+           avgSum += OF[count]
+        vari =  varianceSum/len(OF)
+        avg = avgSum/len(OF)
+        return vari, avg
+        
             
 
 """Fuel tank Calcs"""
 Pt = 11*10**5           #Pa, initial pressure in both tanks
 Ae_f = 9.77809*10**-8   #m^2, Exit Area
-VR = 2.000              #Volume ratio of fuel to air in fuel tank
+VR = 1.000              #Volume ratio of fuel to air in fuel tank
 m_f = 0.01100           #kg, inital fuel mass
 
 dt = 0.001
@@ -138,6 +150,12 @@ tf = t[-1]
 mdot_a, P_a, t_a = SolverInstance.airTank(dt, V_a, Ae_a, tf)
 
 OF = SolverInstance.OFratio(mdot_a,mdot_f)
+
+OF_opt = 4.8
+
+OF_variance, OF_avg = SolverInstance.OFstats(OF, OF_opt)
+
+print("OF variance: ", OF_variance, "OF average: ", OF_avg)
 
 plt.figure(1)
 plt.clf()
