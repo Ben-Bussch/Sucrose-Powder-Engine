@@ -11,6 +11,7 @@ class Solver:
     T0 = 288.15         #K, atm temp
     P0 = 1.01325*10**5   #Atmospheric Pressure
     R = 287.17          #Specific Gas constant of air
+    gamma = 1.4         #Ratio of specific heats
     
     def __init__(self, Ptank):
         self.Ptank = Ptank
@@ -89,7 +90,7 @@ class Solver:
             V.append(V1)
             
             #Pressure in tank
-            P1 = P[count]*V[count]/V1
+            P1 = P[count]*(V[count]**self.gamma)/(V1**self.gamma)
             P.append(P1)
                         
             #Mass Flowrate
