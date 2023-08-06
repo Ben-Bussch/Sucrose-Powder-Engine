@@ -22,15 +22,16 @@ class Solver:
         #initial Parameters
         Pstart = self.Ptank
         m0 = (self.Ptank*Vtank)/(self.R*self.T0)
-        #print("m_start:", m0, "Ptank: ", self.Ptank)
+        print("m_start:", m0, "Ptank: ", self.Ptank)
         t = 0
         
         #Arrays
         P = [Pstart]
         m = [m0]
-        rho = [m0/Vtank]
+        T = [self.T0]
+        rho =[m0/Vtank]
         time = [t]
-        mdot = [-(m0*Aexit/Vtank)*np.sqrt(2*self.R*self.T0 - self.P0*Vtank)]
+        mdot = [-(rho[0]*Aexit*np.sqrt(2*(Pstart-self.P0)/rho[0]))]
         print("mdot start: ", mdot[0])
         
         
@@ -38,17 +39,31 @@ class Solver:
         
         while t < tf:
             
-            #mass flowrate
-            mdot1 = -(m[count]*Aexit/Vtank)*np.sqrt(2*self.R*self.T0 - self.P0*Vtank)
-            mdot.append(mdot1)
+            #Initiate temperature variable to use in first loop
+            if count == 0:
+                T1 = T[count]
             
+            #mass flowrate
+            mdot1 = -(rho[count]*Aexit*np.sqrt(2*(P[count]-self.P0)/rho[count]))
+            mdot.append(mdot1)
+                
             #mass
             m1 = m[count] + (mdot[count+1]+mdot[count])*dt*0.5
             m.append(m1)
-            
+                        
             #Pressure
-            P1 = m[count]*self.R*self.T0/Vtank
+            P1 = P[count]*m1*T1/(m[count]*T[count])
             P.append(P1)
+            
+            #Temperature
+            T1 = P1*T[count]/P[count]
+            T.append(T1)
+            
+            #Density
+            rho1 = m[count+1]/Vtank
+            rho.append(rho1)
+
+           
             
             t += dt
             time.append(t)
@@ -57,7 +72,7 @@ class Solver:
 
         
         print("Time: ",t,"mass: ", m[count], "mdot: ", mdot[count], "Pressure: ",P[count])
-        return mdot, P, time
+        return mdot, P,T, time
     
     def fuelTank(self, dt, Aexit, VR, m0):
         """Numerically solves fuel tank blowout, using tank parameters and timestp dt"""
@@ -148,7 +163,7 @@ Ae_a = 5.04112*10**-6  #m^2, Exit Area
 
 tf = t[-1]
 
-mdot_a, P_a, t_a = SolverInstance.airTank(dt, V_a, Ae_a, tf)
+mdot_a, P_a, T_a, t_a = SolverInstance.airTank(dt, V_a, Ae_a, tf)
 
 OF = SolverInstance.OFratio(mdot_a,mdot_f)
 
@@ -161,7 +176,7 @@ print("OF variance: ", OF_variance, "OF average: ", OF_avg)
 plt.figure(1)
 plt.clf()
 plt.plot(t, mdot_f, label='Fuel Tank')
-plt.plot(t, mdot_a, label='Air Tank')
+plt.plot(t_a, mdot_a, label='Air Tank')
 
 plt.grid(1)
 plt.xlabel("Time [s]")
@@ -173,7 +188,7 @@ plt.legend()
 plt.figure(2)
 plt.clf()
 plt.plot(t, P_f, label='Fuel Tank')
-plt.plot(t, P_a, label='Air Tank')
+plt.plot(t_a, P_a, label='Air Tank')
 
 plt.grid(1)
 plt.xlabel("Time [s]")
@@ -189,6 +204,16 @@ plt.grid(1)
 plt.xlabel("Time [s]")
 plt.ylabel("OF ratio")
 plt.savefig('OF_vs_time.png', dpi=300)
+
+plt.figure(4)
+plt.clf()
+plt.plot(t_a, T_a)
+
+plt.grid(1)
+plt.xlabel("Time [s]")
+plt.ylabel("Tempurature")
+plt.savefig('Temp_vs_time.png', dpi=300)
+
 
 
 plt.ion()
